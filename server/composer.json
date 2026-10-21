@@ -1,0 +1,14 @@
+{
+    "name": "scriblo/backend",
+    "description": "Scriblo API - High performance publishing platform backend with PHP, Redis, and MySQL",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Scriblo\\": "src/"
+        }
+    }
+}

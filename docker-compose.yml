@@ -1,0 +1,78 @@
+services:
+  # 1. Scriblo PHP API Backend
+  api:
+    image: php:8.2-fpm-alpine
+    container_name: scriblo_api
+    restart: unless-stopped
+    working_dir: /var/www/server
+    volumes:
+      - ./server:/var/www/server
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: scriblo_db
+      DB_USER: scriblo_user
+      DB_PASS: scriblo_secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mysql
+      - redis
+
+  # 2. Web Server (NGINX)
+  nginx:
+    image: nginx:alpine
+    container_name: scriblo_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./server:/var/www/server
+      - ./server/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+  # 3. Redis In-Memory Cache & Sorted Sets
+  redis:
+    image: redis:7-alpine
+    container_name: scriblo_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  # 4. MySQL Relational Database
+  mysql:
+    image: mysql:8.0
+    container_name: scriblo_mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret_password
+      MYSQL_DATABASE: scriblo_db
+      MYSQL_USER: scriblo_user
+      MYSQL_PASSWORD: scriblo_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./server/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./server/database/seeds.sql:/docker-entrypoint-initdb.d/02_seeds.sql:ro
+
+  # 5. React Client (Development)
+  client:
+    image: node:22-alpine
+    container_name: scriblo_client
+    working_dir: /app
+    volumes:
+      - ./client:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host"
+    depends_on:
+      - api
+
+volumes:
+  redis_data:
+  mysql_data:
